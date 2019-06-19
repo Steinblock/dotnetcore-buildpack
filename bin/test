@@ -64,7 +64,7 @@ echo "test"
 dotnet test --configuration ${BUILD_CONFIGURATION}  --results-directory `pwd` --logger trx;LogFileName=TestResults.trx
 
 # capture return code
-$EXITCODE=$?
+export $EXITCODE=$?
 
 # workaround: LogFileName is ignored
 mv *.trx TestResults.trx
