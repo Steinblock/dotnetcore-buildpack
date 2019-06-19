@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # bin/test <build-dir> <cache-dir> <env-dir>
 
+# https://kvz.io/blog/2013/11/21/bash-best-practices/
+
 ### Configure environment
 set -o errexit    # always exit on error
 set -o pipefail   # don't ignore exit codes when piping output
@@ -52,9 +54,11 @@ if [ $COVERAGE_DISABLED != true ]; then
     export CollectCoverage=true
 fi
 
-# run dotnet test and capture exit code
+# run dotnet test without errexit and capture exit code
 echo "running dotnet test"
+set +o errexit
 dotnet test --configuration $BUILD_CONFIGURATION --results-directory `pwd` --logger trx;LogFileName=$TESTRESULTS_FILE && EXITCODE=$? || EXITCODE=$?
+set -o errexit
 
 # workaround: --logger trx;LogFileName=... adds a timestamp
 # https://github.com/microsoft/vstest/issues/1951
