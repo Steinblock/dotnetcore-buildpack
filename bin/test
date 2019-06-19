@@ -31,7 +31,7 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=${DOTNET_CLI_TELEMETRY_OPTOUT:-1}
 
 DOTNET_SDK_VERSION=${DOTNET_SDK_VERSION:-2.2.204}
 DOTNET_RUNTIME_VERSION=${DOTNET_RUNTIME_VERSION:-2.2.5}
-BUILD_CONFIGURATION=${BUILD_CONFIGURATION:-Release}
+BUILD_CONFIGURATION=${BUILD_CONFIGURATION:-Debug}
 
 echo "Installing dotnet"
 install_dotnet $BUILD_DIR $CACHE_DIR $DOTNET_SDK_VERSION $DOTNET_RUNTIME_VERSION
@@ -53,5 +53,25 @@ if [ -n "$(cat $PROJECT_FILE | grep 'netcoreapp2.0')" ]; then
 fi
 export NUGET_PACKAGES="${CACHE_DIR}/nuget/cache"
 
+if [ "$COVERAGE_DISABLED" != false ]; then
+    echo "install coverlet"
+    find . -iname *.csproj -iname *test* -exec dotnet add {} package coverlet.msbuild \;
+    export CollectCoverage=true
+fi
+
 echo "test"
-dotnet test --configuration ${BUILD_CONFIGURATION}
+dotnet test --configuration ${BUILD_CONFIGURATION}  --results-directory `pwd` --logger trx;LogFileName=TestResults.trx
+
+# capture return code
+$result=$?
+
+# workaround: LogFileName is ignored
+mv *.trx TestResults.trx
+
+if [ ! -f "TestResults.trx" ]; then
+    [ -f tools/trx2junit ] || dotnet tool install trx2junit --tool-path tools
+    ./tools/trx2junit TestResults.trx
+fi
+
+# exit with return code from dotnet test
+exit $result
