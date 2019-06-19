@@ -29,6 +29,9 @@ export NUGET_XMLDOC_MODE=${NUGET_XMLDOC_MODE:-skip}
 export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=${DOTNET_SKIP_FIRST_TIME_EXPERIENCE:-1}
 export DOTNET_CLI_TELEMETRY_OPTOUT=${DOTNET_CLI_TELEMETRY_OPTOUT:-1}
 export COVERAGE_DISABLED=${COVERAGE_DISABLED:-false}
+export TRX2JUNIT_DISABLED=${TRX2JUNIT_DISABLED:-false}
+export TESTRESULTS_FILE=${TESTRESULTS_FILE:-TestResults.trx}
+export EXITCODE=0
 DOTNET_SDK_VERSION=${DOTNET_SDK_VERSION:-2.2.204}
 DOTNET_RUNTIME_VERSION=${DOTNET_RUNTIME_VERSION:-2.2.5}
 BUILD_CONFIGURATION=${BUILD_CONFIGURATION:-Debug}
@@ -53,19 +56,24 @@ if [ -n "$(cat $PROJECT_FILE | grep 'netcoreapp2.0')" ]; then
 fi
 export NUGET_PACKAGES="${CACHE_DIR}/nuget/cache"
 
-if [ "$COVERAGE_DISABLED" != true ]; then
+if [ $COVERAGE_DISABLED != true ]; then
     echo "install coverlet"
     find . -iname *.csproj -iname *test* -exec dotnet add {} package coverlet.msbuild \;
     export CollectCoverage=true
 fi
 
-echo "test"
-dotnet test --configuration ${BUILD_CONFIGURATION}  --results-directory `pwd` --logger trx;LogFileName=TestResults.trx
+# run dotnet test and capture exit code
+echo "dotnet test"
+dotnet test --configuration ${BUILD_CONFIGURATION} --results-directory `pwd` --logger trx;LogFileName=$TESTRESULTS_FILE && EXITCODE=$? || EXITCODE=$?
 
-# workaround: LogFileName is ignored
-mv *.trx TestResults.trx
+# workaround: --logger trx;LogFileName=... adds a timestamp
+# https://github.com/microsoft/vstest/issues/1951
+mv *.trx TESTRESULTS_FILE
 
-if [ ! -f "TestResults.trx" ]; then
+if [ $TRX2JUNIT_DISABLED != true && ! -f "$TESTRESULTS_FILE" ]; then
+    # this will generate a junit.xml file
     [ -f tools/trx2junit ] || dotnet tool install trx2junit --tool-path tools
-    ./tools/trx2junit TestResults.trx
+    ./tools/trx2junit $TESTRESULTS_FILE
 fi
+
+exit $EXITCODE
