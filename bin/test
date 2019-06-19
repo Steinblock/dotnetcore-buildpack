@@ -68,6 +68,8 @@ if [ $TRX2JUNIT_DISABLED != true ]; then
     # this will generate a junit.xml file
     echo "installing trx2junit"
     [ -f tools/trx2junit ] || dotnet tool install trx2junit --tool-path tools
+    which dotnet
+    export DOTNET_ROOT=${BUILD_DIR}/.heroku/dotnet
     ./tools/trx2junit $TESTRESULTS_FILE
 fi
 
